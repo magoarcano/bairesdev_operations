@@ -7,7 +7,7 @@ Created on 24/1/2019
 import socket
 from contextlib import closing
 import logging
-
+import sys
 
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 PORT = 45454        # Port to listen on (non-privileged ports are > 1023)
@@ -21,28 +21,37 @@ def operate(operation):
     
     TODO: Change temporal eval function for a safer method
     """
-    return eval(operation)
+    print operation
+    logging.info(operation)
+    return str(eval(operation))
 
-class Server(object):
-    def run(self):
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.bind((HOST, PORT))
-            s.listen(10) # Optional parameter in Python 3
-            conn, addr = s.accept()
-            with closing(conn):
-                logging.info('Connected by %s, %s' % addr)
-                while True:
-                    data = conn.recv(1024)
-                    if not data:
-                        break
-                    conn.sendall(str(operate(data)))
-            
 
 if __name__ == '__main__':
     """
-    Server. By the moment return result of one operation
+    Server. Writes results temporarily in file.
+    TODO: Fix for files larger than buffer size
     """
-    my_server = Server()
-    my_server.run()
     
+    server_socket = socket.socket()
+    server_socket.bind((HOST,PORT))
+    server_socket.listen(10) # Acept until 10 incoming connections. Parameter optional in Python 3
+    i=1
+    while True: # Doesn't finish after one client
+        conn, address = server_socket.accept()
+        
+        f = open('results'+ str(i)+".txt",'w')
+        i=i+1
+        # Get and write results in another file
+        l = conn.recv(1024)
+        while (l):
+            logging.info(l)
+            for op in l.split("\n"):
+                if op:
+                    f.write(operate(op) + "\n")
+            l = conn.recv(1024)
+        f.close()
+    
+    
+        conn.close()
+    server_socket.close()
     
