@@ -5,7 +5,10 @@ Created on 24/1/2019
 '''
 import unittest
 
-from server import operate
+from server import operate, HOST, PORT
+import socket
+from contextlib import closing # Not necessary for Python 3
+
 
 class TestServer(unittest.TestCase):
 
@@ -17,6 +20,14 @@ class TestServer(unittest.TestCase):
         self.assertEqual(operate("47 - 88 + 32 - 71 * 39 * 68"), -188301 )
         self.assertEqual(operate("43 * 47 - 75 + 94 * 35 - 60 + 55 + 8"), 5239 )
         self.assertEqual(operate("0 + 0"), 0)
+
+    def testSocket(self):
+        """ For this test, server should be running apart"""
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.connect((HOST, PORT))
+            s.sendall("38 - 83 - 52 + 30 - 24 - 89 / 66 + 18 / 7 * 77")
+            data = s.recv(1024)
+            self.assertEqual(data, '62')
 
 
 if __name__ == "__main__":
