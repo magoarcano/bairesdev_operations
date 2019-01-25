@@ -27,27 +27,22 @@ def operate(operation):
         return "INVALID EXPRESSION"
 
 def child(pipeout, operations):
+    """ Compute a group of arithmetic operations """
     result_list = [operate(op) for op in operations if op != '' ]
     msg = "".join(result_list)
     msg = msg.encode()
     os.write(pipeout, msg)
 
 if __name__ == '__main__':
-    """
-    Server. Writes results temporarily in file.
-    TODO: Fix for files larger than buffer size
-    """
-    
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST,PORT))
     server_socket.listen(10) # Acept until 10 incoming connections. Parameter optional in Python 3
     
-    last =  ''
-    while True: # Doesn't finish after one client
+    while True:
         client_socket, address = server_socket.accept()
-        
-        # Get and write results in another file
+        last =  ''
         data = client_socket.recv(BUFFER_SIZE)
+        
         while (data):
             print last
             logging.info("data: %s" % data)
