@@ -21,10 +21,7 @@ def operate(operation):
     
     TODO: Change temporal eval function for a safer method
     """
-    print operation
-    logging.info(operation)
     return str(eval(operation))
-
 
 if __name__ == '__main__':
     """
@@ -32,26 +29,26 @@ if __name__ == '__main__':
     TODO: Fix for files larger than buffer size
     """
     
-    server_socket = socket.socket()
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST,PORT))
     server_socket.listen(10) # Acept until 10 incoming connections. Parameter optional in Python 3
-    i=1
+    
     while True: # Doesn't finish after one client
-        conn, address = server_socket.accept()
+        client_socket, address = server_socket.accept()
         
-        f = open('results'+ str(i)+".txt",'w')
-        i=i+1
         # Get and write results in another file
-        l = conn.recv(1024)
-        while (l):
-            logging.info(l)
-            for op in l.split("\n"):
+        data = client_socket.recv(8192)
+        while (data):
+            results = []
+            logging.info("data: %s" % data)
+            for op in data.split("\n"):
                 if op:
-                    f.write(operate(op) + "\n")
-            l = conn.recv(1024)
-        f.close()
+                    result = operate(op) + "\n"
+                    results.append(result)
+            logging.info("results: %s" % results)
+            client_socket.sendall("".join(results))
+            data = client_socket.recv(8192)
+        client_socket.close()
     
-    
-        conn.close()
     server_socket.close()
     

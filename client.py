@@ -6,6 +6,7 @@ Created on 24/1/2019
 '''
 
 import socket
+import logging
 
 HOST = '127.0.0.1'  # The server's hostname or IP address
 PORT = 45454        # The port used by the server
@@ -13,10 +14,19 @@ PORT = 45454        # The port used by the server
 if __name__ == '__main__':
     s = socket.socket()
     s.connect((HOST, PORT))
-    f = open ("head.txt", "r") # head.txt small temporary file for development
-    l = f.read(1024)
-    while (l):
-        s.send(l)
-        l = f.read(1024)
+    fin = open ("operations.txt", "r") # head.txt small temporary file for development
+    data = fin.read(8192)
+    while (data):
+        s.send(data)
+        data = fin.read(8192)
+        
+    results = s.recv(8192)
+    logging.info("Results: %s" % results)
+    logging.info("Saving in file results.txt")
+
+    fout = open('results.txt','w')
+    fout.write(results)
+    fout.close()
+    
     s.close()
     
