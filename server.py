@@ -5,9 +5,7 @@ Created on 24/1/2019
 @author: arcano
 '''
 import socket
-from contextlib import closing
 import logging
-import sys
 
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 PORT = 45454        # Port to listen on (non-privileged ports are > 1023)
@@ -21,7 +19,10 @@ def operate(operation):
     
     TODO: Change temporal eval function for a safer method
     """
-    return str(eval(operation))
+    try: 
+        return str(eval(operation))
+    except:
+        return "INVALID"
 
 if __name__ == '__main__':
     """
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     server_socket.bind((HOST,PORT))
     server_socket.listen(10) # Acept until 10 incoming connections. Parameter optional in Python 3
     
+    last =  ''
     while True: # Doesn't finish after one client
         client_socket, address = server_socket.accept()
         
@@ -40,8 +42,15 @@ if __name__ == '__main__':
         data = client_socket.recv(8192)
         while (data):
             results = []
+            print last
             logging.info("data: %s" % data)
-            for op in data.split("\n"):
+            
+            operations = data.split("\n")
+            operations[0] = last + operations[0] # concatenates with last operations of previous segment
+            
+            last = operations.pop()
+            
+            for op in operations:
                 if op:
                     result = operate(op) + "\n"
                     results.append(result)
