@@ -4,6 +4,8 @@ Created on 24/1/2019
 
 @author: arcano
 '''
+
+from sympy import S
 import socket
 import logging
 
@@ -13,16 +15,17 @@ PORT = 45454        # Port to listen on (non-privileged ports are > 1023)
 def operate(operation):
     """ Compute arithmetic operation.
         Allowed operators: *, /, +, -
-    
     :param operation: an string with simple arithmetical operation
     :returns: integer result
-    
-    TODO: Change temporal eval function for a safer method
     """
-    try: 
-        return str(eval(operation))
+    try:
+        s = S(operation)
+        return str(int(s.evalf())) + "\n"
     except:
-        return "INVALID"
+        return "INVALID EXPRESSION"
+
+def operate_child(operations):
+    return [operate(op) for op in operations if op != '' ]
 
 if __name__ == '__main__':
     """
@@ -47,13 +50,10 @@ if __name__ == '__main__':
             
             operations = data.split("\n")
             operations[0] = last + operations[0] # concatenates with last operations of previous segment
-            
             last = operations.pop()
             
-            for op in operations:
-                if op:
-                    result = operate(op) + "\n"
-                    results.append(result)
+            results = operate_child(operations)
+            
             logging.info("results: %s" % results)
             client_socket.sendall("".join(results))
             data = client_socket.recv(8192)

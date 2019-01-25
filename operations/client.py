@@ -14,7 +14,7 @@ PORT = 45454        # The port used by the server
 if __name__ == '__main__':
     s = socket.socket()
     s.connect((HOST, PORT))
-    fin = open ("operations.txt", "r") # head.txt small temporary file for development
+    fin = open ("head.txt", "r") # head.txt small temporary file for development
     data = fin.read(8192)
     while (data):
         s.send(data)
