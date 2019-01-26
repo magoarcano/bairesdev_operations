@@ -21,13 +21,18 @@ if __name__ == '__main__':
         s.send(data)
         data = fin.read(BUFFER_SIZE)
         
-    results = s.recv(BUFFER_SIZE)
-    logging.info("Results: %s" % results)
-    logging.info("Saving in file results.txt")
-
     fout = open('results.txt','w')
-    fout.write(results)
-    fout.close()
     
+    results = s.recv(BUFFER_SIZE)
+    while (results):
+#         logging.info("Results: %s" % results)
+        fout.write(results)
+        print results
+        print "-------"
+#         if len(results) < BUFFER_SIZE:
+#             break
+        results = s.recv(BUFFER_SIZE)
+    logging.info("Saving in file results.txt")
+    fout.close()    
     s.close()
     
