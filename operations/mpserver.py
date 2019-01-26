@@ -8,7 +8,6 @@ Implements server with multiprocessing Process
 '''
 
 import socket
-import os
 from sympy import S
 from multiprocessing import Pipe, Process, cpu_count
 
@@ -17,26 +16,30 @@ PORT = 45454        # Port to listen on (non-privileged ports are > 1023)
 BUFFER_SIZE = 8192
 PROCESSORS = cpu_count()
 
+class OperationProcess(Process):
+    def __init__(self, operations, conn):
+        super(OperationProcess, self).__init__()
+        self.operations = operations
+        self.conn = conn
+        
+    def run(self):
+        result_list = [self.operate(op) for op in operations if op != '' ]
+        msg = "".join(result_list)
+        self.conn.send(msg)
+        self.conn.close()
+        
+    @staticmethod
+    def operate(operation):
+        """ Compute arithmetic operation.
+        :param operation: an string with simple arithmetical operation
+        :returns: integer result
+        """
+        try:
+            s = S(operation)
+            return str(int(s.evalf())) + "\n" 
+        except:
+            return "INVALID EXPRESSION"
 
-def operate(operation):
-    """ Compute arithmetic operation.
-    :param operation: an string with simple arithmetical operation
-    :returns: integer result
-    """
-    try:
-        s = S(operation)
-        return str(int(s.evalf())) + "\n" 
-    except:
-        return "INVALID EXPRESSION"
-
-def child(operations, conn):
-    """ Compute a group of arithmetic operations
-    """
-    result_list = [operate(op) for op in operations if op != '' ]
-    msg = "".join(result_list)
-#     msg = msg.encode()
-    conn.send(msg)
-    conn.close()
 
 if __name__ == '__main__':
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,7 +56,7 @@ if __name__ == '__main__':
         last = operations.pop()
     
         parent_conn, child_conn = Pipe()
-        p = Process(target=child, args=(operations, child_conn) )
+        p = OperationProcess(operations, child_conn)
         children.append({p.pid: [parent_conn, child_conn]})
         p.start()
         results = parent_conn.recv()
