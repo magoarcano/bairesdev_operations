@@ -10,6 +10,7 @@ Implements server with multiprocessing Process
 import socket
 from sympy import S
 from multiprocessing import Pipe, Process, cpu_count
+from __builtin__ import True
 
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 PORT = 45454        # Port to listen on (non-privileged ports are > 1023)
@@ -28,13 +29,13 @@ class OperationProcess(Process):
         self.segment = segment
         
     def run(self):
-        result_list = [self.operate(op) for op in operations if op != '' ]
+        result_list = [self._simple_operate(op) for op in operations if op != '' ]
         msg = "".join(result_list)
         self.conn.send(msg)
         self.conn.close()
         
     @staticmethod
-    def operate(operation):
+    def _operate(operation):
         """ Compute arithmetic operation.
         :param operation: an string with simple arithmetical operation
         :returns: integer result
@@ -43,8 +44,54 @@ class OperationProcess(Process):
             s = S(operation)
             return str(int(s.evalf())) + "\n" 
         except:
+            print "INVALID" + str(operation)
             return "INVALID EXPRESSION"
 
+    @staticmethod
+    def _simple_operate(operation):
+        """ 22 times faster than sympy evalf
+            25 % faster than eval
+        """
+        onlysumrest = []
+        divide = False
+        mult = False
+        try:
+            for factor in operation.split():
+                if divide == True:
+                    onlysumrest[-1] = float(onlysumrest[-1]) / float(factor)
+                    divide = False
+                elif mult == True:
+                    onlysumrest[-1] = float(onlysumrest[-1]) * float(factor)
+                    mult = False
+                elif factor == '/':
+                    divide = True
+                elif factor == '*':
+                    mult = True
+                else:
+                    onlysumrest.append(factor)
+            result = float(onlysumrest[0])
+            suma = False
+            resta = False
+            for factor in onlysumrest:
+                if suma == True:
+                    result += float(factor)
+                    suma = False
+                elif resta == True:
+                    result -= float(factor)
+                    resta = False
+                elif factor == '+':
+                    suma = True
+                elif factor == '-':
+                    resta = True
+            return str(int(result)) + "\n"
+        except Exception as e:
+            print "-----------------------------"
+            print e
+            print operation
+            print onlysumrest
+            print "-----------------------------"
+            return "INVALID" + str(operation) + "\n"
+                 
 
 if __name__ == '__main__':
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -58,17 +105,13 @@ if __name__ == '__main__':
     
     i = 0
     while (data):
-        """
-        TODO: START PRIMERO TODOS JUNTOS
-        LUEGO JOINS DE A UNO. QUIZA AL RECIBIR INFO DESDE LAS PIPES 
-        """
         i = i % PROCESSORS # 
         process = children[i]
         if process:
             p, parent_conn, child_conn = process
             results = parent_conn.recv()
             p.join()
-            client_socket.sendall(results)
+            client_socket.sendall(results) # TODO: Fix. It blocks for files > 5 MB
             # close pipes
             parent_conn.close()
             child_conn.close()
