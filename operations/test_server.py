@@ -5,7 +5,7 @@ Created on 24/1/2019
 '''
 import unittest
 
-from mpserver import OperationProcess
+from server import OperationProcess
 
 class TestServer(unittest.TestCase):
     def testSimple(self):
@@ -32,6 +32,7 @@ class TestServer(unittest.TestCase):
                        ("5 + 93 - 16 * 97 + 70 / 76 - 60 - 5 + 73 - 5", "-1450\n"),
                        ("89 * 30 / 42 * 16 + 77 - 30 / 92 + 39 + 65", "1197\n"),
                        ("42 + 23 + 75 - 90", "50\n"),
+                       ("import sys", "INVALID\n"),
                        ("0/0", "INVALID\n"),
                        ("5/0", "INVALID\n"),
                        ("", "INVALID\n"),

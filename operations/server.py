@@ -4,7 +4,6 @@ Implementation of multiprocesses server.
 Receives data from clent using sockets. Returns result of operations of that data.
 '''
 
-
 from multiprocessing import Pipe, Process, cpu_count
 import socket
 import logging
@@ -14,18 +13,23 @@ PORT = 45454        # Port to listen on (non-privileged ports are > 1023)
 BUFFER_SIZE = 8192
 PROCESSORS = cpu_count()
 
+logging.basicConfig(filename='server.log', level=logging.DEBUG)
+
 class OperationProcess(Process):
-    def __init__(self, operations, conn, segment):
+    """ Implementation of subprocess in charge of solving the mathematical expressions
+    """
+    def __init__(self, operations, conn):
         """
-        :param operations: list of arithmetic operations
+        :param operations: list of arithmetic expressions to calculate
         :param conn: pipe connection
         """
         super(OperationProcess, self).__init__()
         self.operations = operations
         self.conn = conn
-        self.segment = segment
         
     def run(self):
+        """ Evaluates each operation and return results through the pipe
+        """
         result_list = [self._operate(op) for op in self.operations if op != '' ]
         msg = "".join(result_list)
         self.conn.send(msg)
@@ -34,13 +38,14 @@ class OperationProcess(Process):
     @staticmethod
     def _operate(expression):
         """ Fast evaluation of simple arithmetic expression.
+        
         :param expression: an string with simple arithmetical operation
         :returns: truncated integer result or "INVALID" for empty or not well defined expressions
         """
         onlysumrest = []
         operator = ""
         try:
-            # First resolve * and /
+            # First solve * and /
             for factor in expression.split():
                 if operator == '/':
                     onlysumrest[-1] = float(onlysumrest[-1]) / float(factor)
@@ -52,7 +57,7 @@ class OperationProcess(Process):
                     operator = factor
                 else:
                     onlysumrest.append(factor)
-            # Resolve + and -
+            # Solve + and -
             result = float(onlysumrest[0])
             for factor in onlysumrest:
                 if operator == '+':
@@ -63,42 +68,52 @@ class OperationProcess(Process):
                     operator = ''
                 elif factor in ('+', '-'):
                     operator = factor
-            return str(int(result)) + "\n"
+            return "%d\n" % result
         except:
-            logging.warning("Invalid line: %s" % "".join(expression))
+            logging.warning("Invalid line: %s", expression)
             return "INVALID\n"
                  
 
 def server_process(client_socket):
-    last =  ''
+    """ Gets data from socket, fixes truncated operations and send that batch of
+    operations to a new OperationProcess.
+    Receives results in order from the pool. As soon does it, creates the next subprocess.
+    Subprocesses are managed in a fixed size array, equal to number of CPUs in the system
+    """
+    
+    logging.info("Number of processors: %d", PROCESSORS)
+    children = [None] * PROCESSORS # Fixed pool of processes with their pipes.
+    last =  '' # Auxiliar for fixing truncated operations
     i = 0
-    data = client_socket.recv(BUFFER_SIZE)
+    data = client_socket.recv(BUFFER_SIZE) # first batch of data
     while (data):
-        i = i % PROCESSORS
+        i = i % PROCESSORS # counter moves cyclic along subprocesses
         process = children[i]
-        if process:
-            p, parent_conn, child_conn = process
-            results = parent_conn.recv()
-            p.join()
-            client_socket.sendall(results)
+        if process: # If there is already a process working in the array
+            p, parent_conn, child_conn = process # Get process and related pipe
+            results = parent_conn.recv() # waits and get results
+            p.join() # Kill subprocess
+            client_socket.sendall(results) # Send data to sockets
             # close pipes
             parent_conn.close()
             child_conn.close()
-            children[i] = None
+            children[i] = None # Room available
         
-        operations = data.split("\n") # Better than splitlines to detect cropped operations
-        operations[0] = last + operations[0] # concatenates with last operations of previous segment
+        operations = data.split("\n") # This is Better than splitlines to detect truncated operations
+        # Fix truncated operations prefixing with last one of previous batch
+        operations[0] = last + operations[0]
         last = operations.pop()
         
-        parent_conn, child_conn = Pipe()
-        p = OperationProcess(operations, child_conn, i)
-        children[i] = [p, parent_conn, child_conn]
+        # New process is created only when there is room available in children
+        parent_conn, child_conn = Pipe() # creates pipe for subprocess
+        p = OperationProcess(operations, child_conn) # creates subprocess
+        children[i] = [p, parent_conn, child_conn] # Put subprocess in array.
         p.start()
         i += 1
         if len(data) < BUFFER_SIZE:
             break
         data = client_socket.recv(BUFFER_SIZE)
-    # continue sending remaining data from children    
+    # Continue sending data from remaining subprocesses    
     empty = [None] * PROCESSORS
     while children != empty:
         i = i % PROCESSORS 
@@ -119,12 +134,9 @@ if __name__ == '__main__':
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST,PORT))
     server_socket.listen(10) # Accept until 10 incoming connections. Parameter is optional in Python 3
-    children = [None] * PROCESSORS
-#     while True:
-    client_socket, address = server_socket.accept()
-    server_process(client_socket)
-    
+    while True:
+        client_socket, address = server_socket.accept()
+        server_process(client_socket)
     server_socket.close()
-    #endwhile
     
 
