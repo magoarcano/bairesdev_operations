@@ -1,10 +1,7 @@
 # -*- coding: UTF-8 -*-
 '''
-Created on 26/1/2019
-
-@author: arcano
-
-Implements server with multiprocessing Process
+Implementation of multiprocesses server.
+Receives data from clent using sockets. Returns result of operations of that data.
 '''
 
 

@@ -1,8 +1,8 @@
 # -*- coding: UTF-8 -*-
 '''
-Created on 24/1/2019
-
-@author: arcano
+Client for arithmetical operations
+Take a file with mathematical expressions, one per line, send it to server in order to receive results.
+Save response in a file
 '''
 
 import socket
@@ -21,16 +21,15 @@ if __name__ == '__main__':
     s.connect((HOST, PORT))
     
     pid = os.fork()
-    if not pid: # Child. Send operations process
+    if not pid: # Subprocess sends data
         fin = open ("operations.txt", "r") # head.txt small temporary file for development
         data = fin.read(BUFFER_SIZE)
         while (data):
             s.sendall(data)
             data = fin.read(BUFFER_SIZE)
         fin.close()
-    else: # Parent. Receive operations process
-        fout = open('resultsas.txt','w')
-    
+    else: # Parent process receives results
+        fout = open('results.txt','w')
         results = s.recv(BUFFER_SIZE)
         while (results):
             fout.write(results)
@@ -39,5 +38,5 @@ if __name__ == '__main__':
         fout.close()    
         toc=timeit.default_timer()
         dif = toc - tic
-        print "TIEMPO: " + str(dif)
+        logging.info("TIEMPO: " + str(dif))
         
