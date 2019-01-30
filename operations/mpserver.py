@@ -29,7 +29,7 @@ class OperationProcess(Process):
         self.segment = segment
         
     def run(self):
-        result_list = [self._operate(op) for op in operations if op != '' ]
+        result_list = [self._operate(op) for op in self.operations if op != '' ]
         msg = "".join(result_list)
         self.conn.send(msg)
         self.conn.close()
@@ -37,6 +37,8 @@ class OperationProcess(Process):
     @staticmethod
     def _operate(expression):
         """ Fast evaluation of simple arithmetic expression.
+        :param expression: an string with simple arithmetical operation
+        :returns: truncated integer result or "INVALID" for empty or not well defined expressions
         """
         onlysumrest = []
         operator = ""
@@ -67,20 +69,13 @@ class OperationProcess(Process):
             return str(int(result)) + "\n"
         except:
             logging.warning("Invalid line: %s" % "".join(expression))
-            return "INVALID" + str(expression) + "\n"
+            return "INVALID\n"
                  
 
-if __name__ == '__main__':
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((HOST,PORT))
-    server_socket.listen(10) # Accept until 10 incoming connections. Parameter is optional in Python 3
-    children = [None] * PROCESSORS
-#     while True:
-    client_socket, address = server_socket.accept()
+def server_process(client_socket):
     last =  ''
-    data = client_socket.recv(BUFFER_SIZE)
-    
     i = 0
+    data = client_socket.recv(BUFFER_SIZE)
     while (data):
         i = i % PROCESSORS
         process = children[i]
@@ -121,8 +116,17 @@ if __name__ == '__main__':
             child_conn.close()
             children[i] = None
         i += 1
-    
     client_socket.close()
+
+if __name__ == '__main__':
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST,PORT))
+    server_socket.listen(10) # Accept until 10 incoming connections. Parameter is optional in Python 3
+    children = [None] * PROCESSORS
+#     while True:
+    client_socket, address = server_socket.accept()
+    server_process(client_socket)
+    
     server_socket.close()
     #endwhile
     

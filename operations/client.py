@@ -29,7 +29,7 @@ if __name__ == '__main__':
             data = fin.read(BUFFER_SIZE)
         fin.close()
     else: # Parent. Receive operations process
-        fout = open('results.txt','w')
+        fout = open('resultsas.txt','w')
     
         results = s.recv(BUFFER_SIZE)
         while (results):
